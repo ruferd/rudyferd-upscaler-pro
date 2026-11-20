@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Image Upscaler</title>
+  <title>AI Image Upscaler v3</title>
   <style>
     body { font-family: sans-serif; background: #0f172a; color: #f8fafc; padding: 16px; max-width: 600px; margin: auto; }
     .card { background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 14px; }
@@ -16,7 +16,7 @@
   </style>
 </head>
 <body>
-  <h2>AI Image Upscaler</h2>
+  <h2>AI Image Upscaler (v3)</h2>
   <div class="card">
     <input type="file" id="fileInput" accept="image/*" />
     <div id="status">Status: Menunggu gambar...</div>
@@ -31,7 +31,11 @@
     <canvas id="canvas"></canvas>
   </div>
 
-  <script>
+  <script type="module">
+    import { pipeline, env } from 'https://unpkg.com';
+
+    env.allowLocalModels = false;
+
     const status = document.getElementById('status');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -64,10 +68,8 @@
       const model = document.getElementById('modelSelect').value;
       try {
         if (!pipe || lastModel !== model) {
-          status.textContent = 'Mengunduh mesin & model AI (tunggu 15-30 detik)...';
-          const tf = await import('https://esm.sh');
-          tf.env.allowLocalModels = false;
-          pipe = await tf.pipeline('image-to-image', model);
+          status.textContent = 'Mengunduh model AI (tunggu 15-30 detik)...';
+          pipe = await pipeline('image-to-image', model);
           lastModel = model;
         }
         status.textContent = 'Sedang memperbesar gambar...';
