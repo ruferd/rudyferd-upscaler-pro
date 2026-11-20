@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Image Upscaler</title>
+  <style>
+    body { font-family: sans-serif; background: #0f172a; color: #f8fafc; padding: 16px; max-width: 600px; margin: auto; }
+    .card { background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 14px; }
+    select, input, button { width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; font-size: 1rem; }
+    button { background: #3b82f6; border: none; font-weight: bold; cursor: pointer; }
+    button:disabled { opacity: 0.5; }
+    .green { background: #10b981; }
+    #status { color: #38bdf8; margin-top: 10px; font-size: 0.9rem; }
+    canvas { max-width: 100%; height: auto; margin-top: 10px; border-radius: 8px; background: #020617; }
+  </style>
+</head>
+<body>
+  <h2>AI Image Upscaler</h2>
+  <div class="card">
+    <input type="file" id="fileInput" accept="image/*" />
+    <div id="status">Status: Menunggu gambar...</div>
+    <select id="modelSelect">
+      <option value="Xenova/swin2SR-classical-sr-x2-64">Swin2SR 2x (Cepat & Natural)</option>
+      <option value="Xenova/swin2SR-realworld-sr-x4-64-bsrgan-psnr">Swin2SR 4x (Detail Tajam)</option>
+    </select>
+    <button type="button" id="btnRun">Mulai Upscale</button>
+    <button type="button" id="btnSave" class="green">Simpan Gambar (PNG)</button>
+  </div>
+  <div class="card" style="text-align:center;">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <script>
+    const status = document.getElementById('status');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let imgDataUrl = '';
+    let pipe = null;
+    let lastModel = '';
+
+    document.getElementById('fileInput').onchange = function(e) {
+      const file = e.target.files.item(0);
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        imgDataUrl = ev.target.result;
+        const img = new Image();
+        img.onload = function() {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          status.textContent = 'Gambar dimuat: ' + img.width + ' x ' + img.height + ' px';
+        };
+        img.src = imgDataUrl;
+      };
+      reader.readAsDataURL(file);
+    };
+
+    document.getElementById('btnRun').onclick = async function() {
+      if (!imgDataUrl) return alert('Pilih gambar dulu!');
+      const btn = this;
+      btn.disabled = true;
+      const model = document.getElementById('modelSelect').value;
+      try {
+        if (!pipe || lastModel !== model) {
+          status.textContent = 'Mengunduh mesin & model AI (tunggu 15-30 detik)...';
+          const tf = await import('https://esm.sh');
+          tf.env.allowLocalModels = false;
+          pipe = await tf.pipeline('image-to-image', model);
+          lastModel = model;
+        }
+        status.textContent = 'Sedang memperbesar gambar...';
+        const out = await pipe(imgDataUrl);
+        const resCanvas = out.toCanvas();
+        canvas.width = resCanvas.width;
+        canvas.height = resCanvas.height;
+        ctx.drawImage(resCanvas, 0, 0);
+        status.textContent = 'Selesai! Ukuran baru: ' + canvas.width + ' x ' + canvas.height + ' px';
+      } catch (err) {
+        status.textContent = 'Error: ' + err.message;
+      }
+      btn.disabled = false;
+    };
+
+    document.getElementById('btnSave').onclick = function() {
+      if (!imgDataUrl) return;
+      const a = document.createElement('a');
+      a.download = 'upscaled.png';
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    };
+  </script>
+</body>
+</html>
