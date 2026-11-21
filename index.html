@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Image Upscaler v4</title>
+  <title>AI Image Upscaler v5</title>
   <style>
     body { font-family: sans-serif; background: #0f172a; color: #f8fafc; padding: 16px; max-width: 600px; margin: auto; }
     .card { background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 14px; }
@@ -14,9 +14,11 @@
     #status { color: #38bdf8; margin-top: 10px; font-size: 0.9rem; font-weight: bold; }
     canvas { max-width: 100%; height: auto; margin-top: 10px; border-radius: 8px; background: #020617; }
   </style>
+  <!-- Memuat pustaka lewat tag script standar (bukan import dinamis) -->
+  <script src="https://jsdelivr.net"></script>
 </head>
 <body>
-  <h2>AI Image Upscaler (v4)</h2>
+  <h2>AI Image Upscaler (v5)</h2>
   <div class="card">
     <input type="file" id="fileInput" accept="image/*" />
     <div id="status">Status: Siap! Silakan pilih gambar.</div>
@@ -39,11 +41,10 @@
     let pipe = null;
     let lastModel = '';
 
-    // 1. Langsung aktif tanpa menunggu internet
+    // 1. Pilih & tampilkan gambar
     document.getElementById('fileInput').addEventListener('change', function(e) {
       const file = e.target.files.item(0);
       if (!file) return;
-      status.textContent = 'Membaca gambar dari galeri...';
       const reader = new FileReader();
       reader.onload = function(ev) {
         imgDataUrl = ev.target.result;
@@ -60,19 +61,23 @@
       reader.readAsDataURL(file);
     });
 
-    // 2. Baru mengunduh mesin AI saat tombol Mulai Upscale ditekan
+    // 2. Proses Upscale menggunakan window.transformers
     document.getElementById('btnRun').addEventListener('click', async function() {
       if (!imgDataUrl) return alert('Pilih gambar terlebih dahulu!');
+      if (!window.transformers) {
+        status.textContent = 'Gagal: Skrip transformers.min.js diblokir jaringan/AdBlock HP Anda.';
+        return;
+      }
+
       const btn = this;
       btn.disabled = true;
       const model = document.getElementById('modelSelect').value;
+
       try {
+        window.transformers.env.allowLocalModels = false;
         if (!pipe || lastModel !== model) {
-          status.textContent = 'Menghubungkan ke server AI (10-20 detik)...';
-          const tf = await import('https://unpkg.com');
-          tf.env.allowLocalModels = false;
-          status.textContent = 'Mengunduh model Upscaler ke HP...';
-          pipe = await tf.pipeline('image-to-image', model);
+          status.textContent = 'Mengunduh model AI ke HP (tunggu 15-30 detik)...';
+          pipe = await window.transformers.pipeline('image-to-image', model);
           lastModel = model;
         }
         status.textContent = 'Sedang memproses upscale gambar...';
@@ -83,7 +88,7 @@
         ctx.drawImage(resCanvas, 0, 0);
         status.textContent = 'Selesai! Ukuran baru: ' + canvas.width + ' x ' + canvas.height + ' px';
       } catch (err) {
-        status.textContent = 'Gagal: ' + err.message;
+        status.textContent = 'Error: ' + err.message;
       }
       btn.disabled = false;
     });
@@ -91,7 +96,7 @@
     document.getElementById('btnSave').addEventListener('click', function() {
       if (!imgDataUrl) return;
       const a = document.createElement('a');
-      a.download = 'upscaled-v4.png';
+      a.download = 'upscaled-v5.png';
       a.href = canvas.toDataURL('image/png');
       a.click();
     });
