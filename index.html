@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Image Upscaler v3</title>
+  <title>AI Image Upscaler v4</title>
   <style>
     body { font-family: sans-serif; background: #0f172a; color: #f8fafc; padding: 16px; max-width: 600px; margin: auto; }
     .card { background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 14px; }
@@ -11,15 +11,15 @@
     button { background: #3b82f6; border: none; font-weight: bold; cursor: pointer; }
     button:disabled { opacity: 0.5; }
     .green { background: #10b981; }
-    #status { color: #38bdf8; margin-top: 10px; font-size: 0.9rem; }
+    #status { color: #38bdf8; margin-top: 10px; font-size: 0.9rem; font-weight: bold; }
     canvas { max-width: 100%; height: auto; margin-top: 10px; border-radius: 8px; background: #020617; }
   </style>
 </head>
 <body>
-  <h2>AI Image Upscaler (v3)</h2>
+  <h2>AI Image Upscaler (v4)</h2>
   <div class="card">
     <input type="file" id="fileInput" accept="image/*" />
-    <div id="status">Status: Menunggu gambar...</div>
+    <div id="status">Status: Siap! Silakan pilih gambar.</div>
     <select id="modelSelect">
       <option value="Xenova/swin2SR-classical-sr-x2-64">Swin2SR 2x (Cepat & Natural)</option>
       <option value="Xenova/swin2SR-realworld-sr-x4-64-bsrgan-psnr">Swin2SR 4x (Detail Tajam)</option>
@@ -31,11 +31,7 @@
     <canvas id="canvas"></canvas>
   </div>
 
-  <script type="module">
-    import { pipeline, env } from 'https://unpkg.com';
-
-    env.allowLocalModels = false;
-
+  <script>
     const status = document.getElementById('status');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -43,9 +39,11 @@
     let pipe = null;
     let lastModel = '';
 
-    document.getElementById('fileInput').onchange = function(e) {
+    // 1. Langsung aktif tanpa menunggu internet
+    document.getElementById('fileInput').addEventListener('change', function(e) {
       const file = e.target.files.item(0);
       if (!file) return;
+      status.textContent = 'Membaca gambar dari galeri...';
       const reader = new FileReader();
       reader.onload = function(ev) {
         imgDataUrl = ev.target.result;
@@ -53,26 +51,31 @@
         img.onload = function() {
           canvas.width = img.width;
           canvas.height = img.height;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0);
-          status.textContent = 'Gambar dimuat: ' + img.width + ' x ' + img.height + ' px';
+          status.textContent = 'Gambar siap: ' + img.width + ' x ' + img.height + ' px';
         };
         img.src = imgDataUrl;
       };
       reader.readAsDataURL(file);
-    };
+    });
 
-    document.getElementById('btnRun').onclick = async function() {
-      if (!imgDataUrl) return alert('Pilih gambar dulu!');
+    // 2. Baru mengunduh mesin AI saat tombol Mulai Upscale ditekan
+    document.getElementById('btnRun').addEventListener('click', async function() {
+      if (!imgDataUrl) return alert('Pilih gambar terlebih dahulu!');
       const btn = this;
       btn.disabled = true;
       const model = document.getElementById('modelSelect').value;
       try {
         if (!pipe || lastModel !== model) {
-          status.textContent = 'Mengunduh model AI (tunggu 15-30 detik)...';
-          pipe = await pipeline('image-to-image', model);
+          status.textContent = 'Menghubungkan ke server AI (10-20 detik)...';
+          const tf = await import('https://unpkg.com');
+          tf.env.allowLocalModels = false;
+          status.textContent = 'Mengunduh model Upscaler ke HP...';
+          pipe = await tf.pipeline('image-to-image', model);
           lastModel = model;
         }
-        status.textContent = 'Sedang memperbesar gambar...';
+        status.textContent = 'Sedang memproses upscale gambar...';
         const out = await pipe(imgDataUrl);
         const resCanvas = out.toCanvas();
         canvas.width = resCanvas.width;
@@ -80,18 +83,18 @@
         ctx.drawImage(resCanvas, 0, 0);
         status.textContent = 'Selesai! Ukuran baru: ' + canvas.width + ' x ' + canvas.height + ' px';
       } catch (err) {
-        status.textContent = 'Error: ' + err.message;
+        status.textContent = 'Gagal: ' + err.message;
       }
       btn.disabled = false;
-    };
+    });
 
-    document.getElementById('btnSave').onclick = function() {
+    document.getElementById('btnSave').addEventListener('click', function() {
       if (!imgDataUrl) return;
       const a = document.createElement('a');
-      a.download = 'upscaled.png';
+      a.download = 'upscaled-v4.png';
       a.href = canvas.toDataURL('image/png');
       a.click();
-    };
+    });
   </script>
 </body>
 </html>
