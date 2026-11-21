@@ -3,11 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Image Upscaler Pro v6 (Offline Ready)</title>
+  <title>Image Upscaler Pro v7</title>
   <style>
+    * { box-sizing: border-box; }
     body { font-family: sans-serif; background: #0f172a; color: #f8fafc; padding: 16px; max-width: 600px; margin: auto; }
-    .card { background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 14px; }
-    select, input, button { width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; font-size: 1rem; }
+    .card { background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
+    select, input[type="file"], button {
+      width: 100%; max-width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px;
+      border: 1px solid #475569; background: #0f172a; color: white; font-size: 0.95rem; display: block;
+    }
+    input[type="file"] { padding: 10px; font-size: 0.85rem; }
     button { background: #3b82f6; border: none; font-weight: bold; cursor: pointer; }
     .green { background: #10b981; }
     #status { color: #38bdf8; margin-top: 10px; font-size: 0.9rem; font-weight: bold; }
@@ -16,7 +21,7 @@
   </style>
 </head>
 <body>
-  <h2>Image Upscaler Pro (v6)</h2>
+  <h2>Image Upscaler Pro (v7)</h2>
   <div class="card">
     <input type="file" id="fileInput" accept="image/*" />
     <div id="status">Status: Siap! Pilih gambar dari galeri.</div>
@@ -37,7 +42,7 @@
     </select>
 
     <button type="button" id="btnRun">Proses Upscale Sekarang</button>
-    <button type="button" id="btnSave" class="green">Simpan Hasil (PNG)</button>
+    <button type="button" id="btnSave" class="green">Simpan Hasil (JPEG 95%)</button>
   </div>
 
   <div class="card" style="text-align:center;">
@@ -68,7 +73,6 @@
       reader.readAsDataURL(file);
     });
 
-    // Algoritma Pembesaran Bertahap + Unsharp Mask (Anti-Blur & Tanpa Efek Plastik)
     document.getElementById('btnRun').addEventListener('click', function() {
       if (!origImg) return alert('Pilih gambar terlebih dahulu!');
       status.textContent = 'Memproses gambar...';
@@ -79,7 +83,6 @@
         const targetW = origImg.width * scale;
         const targetH = origImg.height * scale;
 
-        // Pembesaran bertahap (step-up) agar garis tepi tetap halus
         let curCanvas = document.createElement('canvas');
         curCanvas.width = origImg.width;
         curCanvas.height = origImg.height;
@@ -103,7 +106,6 @@
         canvas.height = targetH;
         ctx.drawImage(curCanvas, 0, 0);
 
-        // Terapkan filter penajaman detail (Convolution Sharpen)
         if (amount > 0) {
           const imgData = ctx.getImageData(0, 0, targetW, targetH);
           const d = imgData.data;
@@ -133,11 +135,12 @@
       }, 30);
     });
 
+    // Simpan ke format JPEG kualitas 95% (0.95)
     document.getElementById('btnSave').addEventListener('click', function() {
       if (!origImg) return;
       const a = document.createElement('a');
-      a.download = 'upscaled-' + canvas.width + 'x' + canvas.height + '.png';
-      a.href = canvas.toDataURL('image/png');
+      a.download = 'upscaled-' + canvas.width + 'x' + canvas.height + '.jpg';
+      a.href = canvas.toDataURL('image/jpeg', 0.95);
       a.click();
     });
   </script>
